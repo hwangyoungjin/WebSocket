@@ -10,6 +10,7 @@ import java.util.*;
 @Service
 public class RoomService {
     private final Parser parser;
+
     // repository substitution since this is a very simple realization
     private final Set<Room> rooms = new TreeSet<>(Comparator.comparing(Room::getId));
 
