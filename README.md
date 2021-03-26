@@ -56,17 +56,9 @@ WebSocket
     ```gradle
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     ```
-    4. ### WebSocketConfigure 생성
-    ```java
-    @Configuration
-    @EnableWebSocket
-    public class WebSocketConfig implements WebSocketConfigurer {
-        @Override
-        public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-            registry.addHandler(new SocketHandler(), "/socket")
-                    .setAllowedOriginPatterns("*");
-        }
-    }
-    ```
+
+    4. ### WebRTC Code 다운 [참조 : Benkoff/WebRTC-SS](https://github.com/Benkoff/WebRTC-SS/)
+
+    
 
 3. ## 
