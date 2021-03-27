@@ -9,11 +9,20 @@ const audioButtonOff = document.querySelector('#audio_off');
 const audioButtonOn = document.querySelector('#audio_on');
 const exitButton = document.querySelector('#exit');
 const localRoom = document.querySelector('input#id').value;
+/**
+ * localVideo가 Video 스트림 가져온다
+ * remoteVideo가 원격의 video 스트림 가져온다
+ */
 const localVideo = document.getElementById('local_video');
 const remoteVideo = document.getElementById('remote_video');
 const localUserName = localStorage.getItem("uuid");
 
 // WebRTC STUN servers
+/**
+ * STUN 서버는 두 클라이언트 모두 IP 주소를 결정하는 데 사용됩니다.
+ *
+ * rtc 중계가 끊어질 것을 대비한 임시 서버버 * @type {{iceServers: [{urls: string}, {urls: string}]}}
+ */
 const peerConnectionConfig = {
     'iceServers': [
         {'urls': 'stun:stun.stunprotocol.org:3478'},
@@ -21,6 +30,9 @@ const peerConnectionConfig = {
     ]
 };
 
+/**
+ * 가져올 Stream
+ */
 // WebRTC media
 const mediaConstraints = {
     audio: true,
@@ -32,6 +44,10 @@ let localStream;
 let localVideoTracks;
 let myPeerConnection;
 
+/**
+ * $(document).ready(function(){});와 동일한 의미
+ * DOM(Document Object Model) 객체가 생성되어 준비되는 시점에서 호출된다는 의미
+ */
 // on page load runner
 $(function(){
     start();
@@ -93,14 +109,17 @@ function start() {
         }
     };
 
+    /**
+     * onopen을 통해 소켓이 연결된 경우에만 서버로 메세지 보낸다.
+     */
     // add an event listener to get to know when a connection is open
     socket.onopen = function() {
         log('WebSocket connection opened to Room: #' + localRoom);
         // send a message to the server to join selected room with Web Socket
         sendToServer({
-            from: localUserName,
+            from: localUserName, // uuid를 의미
             type: 'join',
-            data: localRoom
+            data: localRoom // room number를 의미
         });
     };
 
@@ -290,7 +309,8 @@ function handleTrackEvent(event) {
 }
 
 /**
- * 시그널링 서버를 호출
+ * Client1이 시그널링 서버를 호출 = createOffer()를 통해 SDP 생성
+ * SDP와 함께 setLocalDescription() 호출
  */
 // WebRTC called handler to begin ICE negotiation
 // 1. create a WebRTC offer
@@ -319,7 +339,9 @@ function handleNegotiationNeededEvent() {
  * 세션의 매개 변수를 나타냅니다.
  * 각 RTCSessionDescription는 세션의  SDP 기술자(descriptor)의 기술 제안
  * / 응답 협상 과정의 일부를 나타내는 설명  type으로 구성되어 있습니다.
- * @param message
+ *
+ * Client2 가 Client1의 SDP를 가지고 setRemoteDescription()를 호출
+ * -> Client1은 Client2의 설정을 알게된다.
  */
 function handleOfferMessage(message) {
     log('Accepting Offer Message');
@@ -345,6 +367,9 @@ function handleOfferMessage(message) {
                 localStream.getTracks().forEach(track => myPeerConnection.addTrack(track, localStream));
             })
             .then(function () {
+                /**
+                 * Client2는 응답을 인자로 전달하는 성공 콜백 함수 createAnswer()를 호출
+                 */
                 log("-- Creating answer");
                 // Now that we've successfully set the remote description, we need to
                 // start our stream up locally then create an SDP answer. This SDP
@@ -353,6 +378,10 @@ function handleOfferMessage(message) {
                 return myPeerConnection.createAnswer();
             })
             .then(function (answer) {
+                /**
+                 * Client2는 setLocalDescription()의 호출을 통해
+                 * Client2의 응답을 로컬 기술(Description)으로 설정합니다.
+                 */
                 log("-- Setting local description after creating answer");
                 // We now have our answer, so establish that as the local description.
                 // This actually configures our end of the call to match the settings
@@ -360,6 +389,9 @@ function handleOfferMessage(message) {
                 return myPeerConnection.setLocalDescription(answer);
             })
             .then(function () {
+                /**
+                 * Client2는 시그널링 메커니즘을 사용하여 자신의 문자열화된 응답을 Client1에게 다시 전송합니다.
+                 */
                 log("Sending answer packet back to other peer");
                 sendToServer({
                     from: localUserName,
@@ -378,7 +410,8 @@ function handleOfferMessage(message) {
  * 이를 통해 WebRTC는 성공적인 연결을 설정합니다.
  * 이제 시그널링 서버없이 두 피어간에 직접 데이터를주고받을 수 있습니다 .
  * @param message
- */
+ *
+ * Client1은 setRemoteDescription()을 사용하여 Client2의 응답을 원격 세션 기술(Description)으로 설정 */
 function handleAnswerMessage(message) {
     log("The peer has accepted request");
 

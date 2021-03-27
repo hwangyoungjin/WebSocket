@@ -27,6 +27,9 @@ public class MainServiceImpl implements MainService {
         this.parser = parser;
     }
 
+    /**
+     * main 화면 return
+     */
     @Override
     public ModelAndView displayMainPage(final Long id, final String uuid) {
         final ModelAndView modelAndView = new ModelAndView("main");
@@ -37,6 +40,10 @@ public class MainServiceImpl implements MainService {
         return modelAndView;
     }
 
+    /**
+     * 룸 만들기 요청
+     * 륨 만들어진 main 화면 return
+     */
     @Override
     public ModelAndView processRoomSelection(final String sid, final String uuid, final BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
@@ -49,6 +56,11 @@ public class MainServiceImpl implements MainService {
         return this.displayMainPage(optionalId.orElse(null), uuid);
     }
 
+
+    /**
+     * main화면에서 room 클릭시 실행되며
+     * char_room.html Return
+     */
     @Override
     public ModelAndView displaySelectedRoom(final String sid, final String uuid) {
         // redirect to main page if provided data is invalid
@@ -67,6 +79,10 @@ public class MainServiceImpl implements MainService {
         return modelAndView;
     }
 
+    /**
+     * room에서 나갈때 실행되며
+     * redirect:/ 되서  main 화면 return 된다.
+     */
     @Override
     public ModelAndView processRoomExit(final String sid, final String uuid) {
         if(sid != null && uuid != null) {
@@ -76,6 +92,10 @@ public class MainServiceImpl implements MainService {
         return new ModelAndView(REDIRECT);
     }
 
+    /**
+     * RoomNumber Random으로 요청시 발생
+     * 랜덤넘버의 room number 생성하여 main화면 return
+     */
     @Override
     public ModelAndView requestRandomRoomNumber(final String uuid) {
         return this.displayMainPage(randomValue(), uuid);

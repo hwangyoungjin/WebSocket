@@ -37,12 +37,31 @@ WebSocket
     * SDP (Session Description Protocol)
     세션 기술 프로토콜(Session Description Protocol, SDP)은 스트리밍 미디어의 초기화 인수를 기술하기 위한 포맷이다. 이 규격은 IETF의 RFC 4566로 규정되어 있다.
     실제로 WEB RTC는 SDP format 에 맞춰져 영상,음성 데이터를 교환하고 있다.
+    PeerConnection 객체를 생성하게 되면 PeerConnection 객체에서 offer SDP, answer 
 
-    * Ice (Interactive Connectivity Establishment)
+    * ICE (Interactive Connectivity Establishment)
     NAT환경에서 자신의 Public IP를 파악하고 상대방에게 데이터를 전송하기 위한 Peer간의 응답 프로토콜로 일반적으로 STUN/TURN을 이용해서 구축을 한다.
     간단하게 설명하면, 한쪽이 Offer를 보내면 다른 한쪽이 Answer함으로써 피어간 연결이 설정된다
     
     ```
+
+    ```java
+    * WebRTC에 필요한 4가지 종류의 서버측 기능
+    1. 사용자 탐색과 통신
+    2. Signaling
+    3. NAT/firewall 탐색
+    4. P2P 실패시의 중계 서버들
+
+    * springboot 서버에선 signalling만 구현
+    signalling은 webRTC에 구현되어 있지 않아 따로 WebRTC와 별개로 따로 Signalling Server를 구현해야 한다. 
+    많은 Cloud Message Platform이 존재 (Pusher, Kaazing, PubNub) 하긴하지만  Web socket 기능을 이용하여 직접 구현해도 된다. (SIP, XMPP/Jingle 기술도 가능)
+
+    * signalling server 동작원리
+    1. 통신을 원하는 사용자는 상대 사용자에게 Signalling Server를 통해 자신의 정보들을 제공한다 (ICE 사용가능)
+    2. 상대 사용자는 그 정보들에 대해 자신의 정보를 담아 답장한다 (ICE 사용가능)
+    ```
+
+    - ## [WebRTC 정리 잘되어있음 But Node.js](https://jinn-blog.tistory.com/112)
 
     2. ### Project Setting
     ```java
