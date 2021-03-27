@@ -2,6 +2,9 @@ package com.example.webrtc.model;
 
 import java.util.Objects;
 
+/**
+ * Client와 주고받을 Model
+ */
 public class WebSocketMessage {
     private String from;
     private String type;

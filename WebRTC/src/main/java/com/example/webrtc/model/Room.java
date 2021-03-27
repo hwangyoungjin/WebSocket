@@ -8,9 +8,17 @@ import java.util.Map;
 import java.util.Objects;
 
 public class Room {
+
+    /**
+     * 채팅방은 id, Clients로 구성
+     */
+
     @NotNull
     private final Long id;
     // sockets by user names
+
+    // WebSocketSession은 spring에서 WebSocket connection이 맺어진 세션을 가리킨다 - 편하게 고수준 socket이라고 생각
+    //
     private final Map<String, WebSocketSession> clients = new HashMap<>();
 
     public Room(Long id) {

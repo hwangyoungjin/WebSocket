@@ -37,6 +37,11 @@ $(function(){
     start();
 });
 
+/**
+ * 핵심 function
+ * WebRTC 연결을 설정하는 다음 단계는 ICE (Interactive Connection Establishment) 및 SDP 프로토콜을 포함하며,
+ * 여기서 피어의 세션 설명이 두 피어에서 교환되고 수락
+ */
 function start() {
     // add an event listener for a message being received
     socket.onmessage = function(msg) {
@@ -51,16 +56,33 @@ function start() {
                 handleOfferMessage(message);
                 break;
 
+            /**
+             * 그 후 다른 피어가 오퍼를 수신하면 이를 원격 설명으로 설정해야합니다 .
+             * 또한 응답을 생성해야 하며 이는 시작 피어로 전송됩니다.
+             */
             case "answer":
                 log('Signal ANSWER received');
                 handleAnswerMessage(message);
                 break;
 
+            /**
+             * WebRTC는 ICE (Interactive Connection Establishment) 프로토콜을
+             * 사용하여 피어를 검색하고 연결을 설정합니다.
+             *
+             * peerConnection 에 로컬 설명을 설정하면 icecandidate 이벤트가 트리거됩니다 .
+             * 이 이벤트는 원격 피어가 원격 후보 세트에 후보를 추가 할 수 있도록 후보를 원격 피어로 전송해야합니다.
+             * 이를 위해 onicecandidate 이벤트에 대한 리스너를 만듭니다 .
+             */
             case "ice":
                 log('Signal ICE Candidate received');
                 handleNewICECandidateMessage(message);
                 break;
 
+            /**
+             * 먼저 오퍼를 생성하고 이를 peerConnection 의 로컬 설명으로 설정합니다 .
+             * 그런 다음 제안 을 다른 피어 에게 보냅니다
+             * 서버 측 기술로 send 메소드의 로직을 자유롭게 구현할 수 있습니다.
+             */
             case "join":
                 log('Client is starting to ' + (message.data === "true)" ? 'negotiate' : 'wait for a peer'));
                 handlePeerConnection(message);
@@ -202,6 +224,10 @@ function handlePeerConnection(message) {
     }
 }
 
+/**
+ * RTCPeerConnection
+ * 로컬 컴퓨터와 원격 피어 간의 WebRTC 연결을 나타낸다. 두 피어 간의 효율적인 데이터 스트리밍을 처리하는데 사용된다.
+ */
 function createPeerConnection() {
     myPeerConnection = new RTCPeerConnection(peerConnectionConfig);
 
@@ -215,6 +241,11 @@ function createPeerConnection() {
     // myPeerConnection.onicegatheringstatechange = handleICEGatheringStateChangeEvent;
     // myPeerConnection.onsignalingstatechange = handleSignalingStateChangeEvent;
 }
+
+/**
+ * 카메라/마이크 등 데이터 스트림 접근
+ * @param mediaStream
+ */
 // add MediaStream to local video element and to the Peer
 function getLocalMediaStream(mediaStream) {
     localStream = mediaStream;
@@ -258,6 +289,9 @@ function handleTrackEvent(event) {
     remoteVideo.srcObject = event.streams[0];
 }
 
+/**
+ * 시그널링 서버를 호출
+ */
 // WebRTC called handler to begin ICE negotiation
 // 1. create a WebRTC offer
 // 2. set local media description
@@ -280,6 +314,13 @@ function handleNegotiationNeededEvent() {
         });
 }
 
+/**
+ * RTCSessionDescription
+ * 세션의 매개 변수를 나타냅니다.
+ * 각 RTCSessionDescription는 세션의  SDP 기술자(descriptor)의 기술 제안
+ * / 응답 협상 과정의 일부를 나타내는 설명  type으로 구성되어 있습니다.
+ * @param message
+ */
 function handleOfferMessage(message) {
     log('Accepting Offer Message');
     log(message);
@@ -332,6 +373,12 @@ function handleOfferMessage(message) {
     }
 }
 
+/**
+ * 시작피어는 응답을 받고 원격설명으로 설정
+ * 이를 통해 WebRTC는 성공적인 연결을 설정합니다.
+ * 이제 시그널링 서버없이 두 피어간에 직접 데이터를주고받을 수 있습니다 .
+ * @param message
+ */
 function handleAnswerMessage(message) {
     log("The peer has accepted request");
 
@@ -341,6 +388,15 @@ function handleAnswerMessage(message) {
     myPeerConnection.setRemoteDescription(message.sdp).catch(handleErrorMessage);
 }
 
+/**
+ * RTCIceCandidate
+ * RTCPeerConnection 설정을 위한 후보 인터넷 연결 설정
+ * (ICE; internet connectivity establishment) 서버를 나타냅니다.
+ *
+ * 다른 피어가 보낸 ICE 후보를 처리해야합니다.
+ * 이 후보 를 수신 한 원격 피어 는 후보를 후보 풀에 추가해야합니다.
+ * @param message
+ */
 function handleNewICECandidateMessage(message) {
     let candidate = new RTCIceCandidate(message.candidate);
     log("Adding received ICE candidate: " + JSON.stringify(candidate));

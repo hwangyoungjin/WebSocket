@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -18,6 +19,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+
+@Component
+// TextWebSocketHandler인터페이스를 구현한다.
 public class SignalHandler extends TextWebSocketHandler {
     @Autowired
     private RoomService roomService;
@@ -42,12 +46,18 @@ public class SignalHandler extends TextWebSocketHandler {
     // leave room data message
     private static final String MSG_TYPE_LEAVE = "leave";
 
+    /**
+     * 웹 소켓 연결이 클로즈될때 호출되는 메소드
+     */
     @Override
     public void afterConnectionClosed(final WebSocketSession session, final CloseStatus status) {
         logger.debug("[ws] Session has been closed with status {}", status);
         sessionIdToRoomMap.remove(session.getId());
     }
 
+    /**
+     * 웹 소켓의 연결될 때 호출되는 메소드
+     */
     @Override
     public void afterConnectionEstablished(final WebSocketSession session) {
         // webSocket has been opened, send a message to the client
@@ -56,6 +66,9 @@ public class SignalHandler extends TextWebSocketHandler {
         sendMessage(session, new WebSocketMessage("Server", MSG_TYPE_JOIN, Boolean.toString(!sessionIdToRoomMap.isEmpty()), null, null));
     }
 
+    /**
+     * session에서 메시지를 수신했을 때 호출되는 메소드
+     */
     @Override
     protected void handleTextMessage(final WebSocketSession session, final TextMessage textMessage) {
         // a message has been received
