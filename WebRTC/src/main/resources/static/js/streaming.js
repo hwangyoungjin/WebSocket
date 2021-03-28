@@ -8,6 +8,7 @@ const hdButton = document.querySelector('#hd');
 const localVideo = document.querySelector('video');
 // Local stream that will be reproduced on the video.
 let localStream;
+
 // media constraints
 const qvgaConstraints = {
     video: {width: {exact: 320}, height: {exact: 240}},

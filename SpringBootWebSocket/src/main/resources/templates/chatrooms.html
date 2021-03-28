@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+    <script  type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+    <!-- 의존성 추가 했던 라이브러리 사용 -->
+    <script  type="text/javascript" src="/webjars/sockjs-client/1.0.2/sockjs.min.js"></script>
+
+    <script src="/js/chatroom.js"></script>
+    <title>chat room</title>
+</head>
+
+<body>
+
+<div class="jumbotron">
+    <h1>chat room</h1>
+</div>
+
+<div class="container">
+
+    <div class="col-sm-12 col-md-12">
+        <textarea cols="80" rows="15" id="chatArea" class="form-control"></textarea>
+    </div>
+    <div class="col-sm-12 col-md-12">
+        <input type="text" id="chatInput" class="form-control"/>
+        <input type="button" id="sendBtn" value="전송" class="btn btn-primary btn-small"/>
+    </div>
+
+</div>
+</body>
+</html>

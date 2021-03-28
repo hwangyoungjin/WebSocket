@@ -26,7 +26,7 @@ const localUserName = localStorage.getItem("uuid");
 const peerConnectionConfig = {
     'iceServers': [
         {'urls': 'stun:stun.stunprotocol.org:3478'},
-        {'urls': 'stun:stun.l.google.com:19302'},
+        {'urls': 'stun:stun.l.google.com:19302'}, // P2P 연결의 중계서버는 구글에서 무료로 지원하는 Google STUN 서버
     ]
 };
 
@@ -94,10 +94,10 @@ function start() {
                 handleNewICECandidateMessage(message);
                 break;
 
-            /**
+            /**어 에게 보냅니다
+             * 서버 측 기술로 send 메소
              * 먼저 오퍼를 생성하고 이를 peerConnection 의 로컬 설명으로 설정합니다 .
-             * 그런 다음 제안 을 다른 피어 에게 보냅니다
-             * 서버 측 기술로 send 메소드의 로직을 자유롭게 구현할 수 있습니다.
+             * 그런 다음 제안 을 다른 피드의 로직을 자유롭게 구현할 수 있습니다.
              */
             case "join":
                 log('Client is starting to ' + (message.data === "true)" ? 'negotiate' : 'wait for a peer'));

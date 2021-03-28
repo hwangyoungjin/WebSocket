@@ -47,9 +47,6 @@ public class MainController {
 
     /**
      * 채팅방에서 나갈때 실행됨
-     * @param sid
-     * @param uuid
-     * @return
      */
     @GetMapping("/room/{sid}/user/{uuid}/exit")
     public ModelAndView processRoomExit(@PathVariable("sid") final String sid, @PathVariable("uuid") final String uuid) {
@@ -61,10 +58,15 @@ public class MainController {
         return mainService.requestRandomRoomNumber(uuid);
     }
 
+    /**
+     * client에서 sdp offer 할때 실행되며
+     * sdp_offer html 반환
+     */
     @GetMapping("/offer")
     public ModelAndView displaySampleSdpOffer() {
         return new ModelAndView("sdp_offer");
     }
+
 
     @GetMapping("/stream")
     public ModelAndView displaySampleStreaming() {

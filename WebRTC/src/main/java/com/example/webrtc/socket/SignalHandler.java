@@ -47,7 +47,7 @@ public class SignalHandler extends TextWebSocketHandler {
     private static final String MSG_TYPE_LEAVE = "leave";
 
     /**
-     * 웹 소켓 연결이 클로즈될때 호출되는 메소드
+     * 브라우저가 연결을 닫으면 이 메서드가 호출되고 세션이 세션 목록에서 제거
      */
     @Override
     public void afterConnectionClosed(final WebSocketSession session, final CloseStatus status) {
@@ -56,7 +56,8 @@ public class SignalHandler extends TextWebSocketHandler {
     }
 
     /**
-     * 웹 소켓의 연결될 때 호출되는 메소드
+     * 브라우져가 WebSocket과의 핸드셰이크를 완료하고 연결/세션을 생성 할 때마다 호출
+     * (이 연결은 양쪽 당사자가 닫을 때까지 영원히 지속됩니다). 세션이 세션 목록에 추가됩니다.
      */
     @Override
     public void afterConnectionEstablished(final WebSocketSession session) {
@@ -67,7 +68,9 @@ public class SignalHandler extends TextWebSocketHandler {
     }
 
     /**
-     * session에서 메시지를 수신했을 때 호출되는 메소드
+     * 특정 세션이 webSocket에 메시지를 보낼 때마다 호출됩니다.
+     * 이런 일이 발생하면 webSocket에 연결된 모든 세션을 반복하고 각 세션에 메시지를 보냅니다
+     * 이때 메시지를 보낸 세션은 제외 -- (자신에게 메시지를 보내는 것을 방지하기 위해).
      */
     @Override
     protected void handleTextMessage(final WebSocketSession session, final TextMessage textMessage) {

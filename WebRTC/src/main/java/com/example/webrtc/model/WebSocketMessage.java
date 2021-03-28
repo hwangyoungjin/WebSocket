@@ -4,6 +4,7 @@ import java.util.Objects;
 
 /**
  * Client와 주고받을 Model
+ * SignalHandler에서 사용
  */
 public class WebSocketMessage {
     private String from;
