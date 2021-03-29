@@ -247,7 +247,6 @@ WebSocket
         ```
 
 2. ## WebRTC
-    1. ### [WebRTC + SpringBoot](https://www.baeldung.com/webrtc)
     ```java
     Web RTC 기술은 P2P 통신에 최적화 되어있다.
     Web RTC에 사용되는 기술은 여러가지가 있지만 크게 3가지의 클래스에 의해서 실시간 데이터 교환이 일어난다.
@@ -298,6 +297,7 @@ WebSocket
     * coturn : coturn은 stun/turn 둘 다 동시에 제공
     ```
 
+    - ### Signalling
     ```java
     * WebRTC에 필요한 4가지 종류의 서버측 기능
     1. 사용자 탐색과 통신
@@ -314,13 +314,358 @@ WebSocket
     2. 상대 사용자는 그 정보들에 대해 자신의 정보를 담아 답장한다 (ICE 사용가능)
     ```
 
+    - ### 생각하는 순서
+    ```java
+    * WebRTC 순서 정리
+
+    * WebRTC가 P2P연결할 수없을때 사용 하는 Turn 서버는 사용하지 않는다고 가정
+
+    ClientA
+    1. stun을 통해 자신의 Public IP를 알아내고
+    2. RTCPeerConnection 객체 를 생성할 때 이를 사용
+
+    ClientB
+    1. stun을 통해 자신의 Public IP를 알아내고
+    2. RTCPeerConnection 객체 를 생성할 때 이를 사용
+
+    ============================
+
+    3. ClientA가 signaling 서버에 candidate를 전송
+    4. signaling 서버는 해당 candidate를 다른 클라이언트에게 전송
+
+    5. ClientB가 해당 candidate를 받고 응답하기위해 signalling서버에 cadidate 발송
+
+    ==========연결완료===========
+
+    이후에 미디어 스트림을 가져와서 SIP를 통해 ClientA, ClientB끼리 통신
+
+    ※※※※※※※※※※※※질문※※※※※※※※※※※
+
+    Q1. 연결된 이후에는 signalling 서버와의 통신은 없는건지? 
+
+    Q2. WebRTC가 P2P연결할 수없을때 사용 하는 Turn 서버는 어느방법을 통해 구현해야하는건지?
+    ```
+
+
     - ## [WebRTC 정리 잘되어있음](https://jinn-blog.tistory.com/112)
 
     - ## [front : react + back : springboot으로 RTC](https://www.baeldung.com/webrtc)
         - ## 해당 Project의 [Github](https://github.com/sintinilorenzo/video-calling-app)
         - turn은 연결이 안되므로 같은 공유기 안에서만 가능
 
-    2. ### Project Setting
+    
+3. ## [WebRTC + SpringBoot = baeldung](https://www.baeldung.com/webrtc)
+     ```
+    * WebRTC는 브라우저와 함께 기본 제공되는 솔루션이므로 브라우저에 외부 플러그인을 설치할 필요X
+
+    * WebRTC가 내부적으로 처리하는 문제 문제
+     1. Packet-loss concealment
+     2. Echo cancellation
+     3. Bandwidth adaptivity
+     4. Dynamic jitter buffering
+     5. Automatic gain control
+     6. Noise reduction and suppression
+     7. Image “cleaning”
+
+    * 클라이언트가 서로를 검색하고 네트워크 세부 정보를 공유 한 다음 데이터 형식을 공유하기 위해 WebRTC는 Signaling 라는 메커니즘을 사용
+
+    * Signaling server는 Springboot를 통해 구현
+    ```
+
+    1. ### Project Setting
+    ```java
+    * 환경
+    * jdk11
+    * gradle
+    * springboot 2.4.4
+    * dependency
+    - lombok
+    - WebSocket *signaling server 구축을 위해 필요*
+    - Thymeleaf
+    - devtools
+    ```
+
+    2. ### WebSocketConfigurer 구현한 클래스 생성
+    ```java
+    @Configuration
+    @EnableWebSocket
+    public class WebSocketConfiguration implements WebSocketConfigurer {
+
+        @Override
+        public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+            registry.addHandler(new SocketHandler(), "/socket")
+                    .setAllowedOrigins("*");
+        }
+    }
+    ```
+
+    3. ### message Handler 생성
+    ```java
+    * 해당 클래스는 서로 다른 클라이언트 간의 메타 데이터 교환을 지원하는 데 필수
+    * 해당 클래스는 클라이언트로부터 메시지를받을 때 자신을 제외한 다른 모든 클라이언트에게 메시지를 보낸다
+
+    @Component
+    public class SocketHandler extends TextWebSocketHandler {
+
+        List<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+
+        /**
+        * 클라이언트로부터 메시지를 받으면 목록의 모든 클라이언트 세션을 반복하고
+        * 보낸 사람의 세션 ID를 비교하여 보낸 사람을 제외한 다른 모든 클라이언트에게 메시지를 보낸다.
+        */
+        @Override
+        public void handleTextMessage(WebSocketSession session, TextMessage message)
+                throws InterruptedException, IOException {
+            for (WebSocketSession webSocketSession : sessions) {
+                if (webSocketSession.isOpen() && !session.getId().equals(webSocketSession.getId())) {
+                    webSocketSession.sendMessage(message);
+                }
+            }
+        }
+
+        /**
+        * 모든 클라이언트를 추적 할 수 있도록 수신 된 세션을 세션 목록에 추가
+        */
+        @Override
+        public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+            sessions.add(session);
+        }
+    }
+    ```
+
+    4. ### MetaData 교환 단계
+    ```java
+    * P2P 연결에서 클라이언트는 서로 다를 수 있다 (EX. Android <-> ios)
+    * 따라서 미디어 유형 및 코덱에 동의하는 피어 간의 핸드 셰이크가 필수적
+    * 해당단계에서 WebRTC는 SDP (Session Description Protocol)를 사용하여 클라이언트 간의 메타 데이터에 동의합니다
+    * 이를 달성하기 위해 PeerA는 다른 피어(PeerB)가 원격 설명 자로 설정해야하는 Offer를 작성합니다. 또한 다른 피어(PeerB)는 PeerA가 원격 설명 자로 수락하는 answer을 생성합니다.
+    * 위 과정을 통해 PeerA와 PeerB는 연결이 완료
+    ```
+
+    5. ### Client 설정
+    ```js
+    //connecting to our signaling server
+    //우리가 구축 한 Spring Boot 시그널링 서버가 http : // localhost : 8080 에서 실행되고 있음
+    var conn = new WebSocket('ws://localhost:8080/socket');
+    ```
+
+    ```js
+    /**
+    * signaling server로 메세지 보내기 위해 send 메소드 설정
+    */
+    function send(message) {
+        conn.send(JSON.stringify(message));
+    }
+    ```
+
+    ```js
+     /**
+     * 간단한 RTCDataChannel 설정
+     * Configuration에는 Stun turn 이 들어가지만 이번 예제에서는 null로 충분
+     */
+    peerConnection = new RTCPeerConnection(configuration);
+
+    /**
+     * 메시지 전달에 사용할 dataChannel
+     */
+    // creating data channel
+    dataChannel = peerConnection.createDataChannel("dataChannel", {
+        reliable : true
+    });
+
+    /**
+     * 데이터 채널의 다양한 이벤트에 대한 리스너
+     */
+    dataChannel.onerror = function(error) {
+        console.log("Error occured on datachannel:", error);
+    };
+
+    dataChannel.onclose = function() {
+        console.log("data channel is closed");
+    };
+    ```
+
+    6. ### ICE 연결 설정
+    ```java
+    * 해당 단계는 ICE (Interactive Connection Establishment) 및 SDP 프로토콜을 포함하며
+    * 여기서 피어의 세션 설명이 두 Peer에서 교환되고 수락 된다.
+    ```
+    
+    - #### 처음 PeerA offer 생성
+    ```js
+    /**
+    * 1. offer를 생성하고 이를 peerConnection 의 localDescription으로 설정
+    * 2. 이후 offer 을 다른 PeerB 에게 보낸다.
+    */
+    function createOffer() {
+        peerConnection.createOffer(function(offer) {
+            //send 메소드는 offer 정보 를 전달하기 위해 Signaling Server를 호출
+            send({
+                event : "offer",
+                data : offer
+            });
+            peerConnection.setLocalDescription(offer);
+        }, function(error) {
+            alert("Error creating an offer");
+        });
+    }
+    ```
+
+    - #### step2. ICE candidate 처리
+    ```js
+    /**
+     * WebRTC는 ICE (Interactive Connection Establishment) 프로토콜을 사용하여 Peer를 검색하고 연결을 설정
+     * peerConnection 에 localDescription을 설정하면 icecandidate 이벤트가 트리거된다
+     * 상대 PeerB가 Set of remote candidates에 Candidate를 추가 할 수 있도록 candidate를 상대 PeerB에게 전송
+     * 이를 위해 onicecandidate 이벤트에 대한 리스너를 만든다.
+     *
+     * ICE candidate의 모든 candidate가 수집 될 때 이벤트는 빈 후보 문자열을 다시 트리거
+     * 그 이유는 빈 문자열을 remote peer에게 전달하여 모든 icecandidate 객체가 수집 되었음을 알리기 위해
+     */
+    // Setup ice handling
+    peerConnection.onicecandidate = function(event) {
+        if (event.candidate) {
+            send({
+                event : "candidate",
+                data : event.candidate
+            });
+        }
+    };
+    ```
+
+    - #### step3. PeerA가 보낸 ICE candidate 받기
+    ```js
+    /**
+    * PeerA가 보낸 ICE candidate를 처리해야 하는데
+    * 이 candidate를 받은 PeerB는 해당 candidate를 candidate pool의 추가
+    */
+    function handleCandidate(candidate) {
+        peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+    };
+    ```
+
+    - #### step4. PeerB가 offer 받고 PeerA에게 answer 보내기
+    ```js
+    /**
+    * offer를 받은 PeerB는 이를 Remotedescription으로 설정하고
+    * answer를 생성하여 PeerA 에게 보낸다.
+    * @param offer d
+    */
+    function handleOffer(offer) {
+        peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+
+        // create and send an answer to an offer
+        peerConnection.createAnswer(function(answer) {
+            peerConnection.setLocalDescription(answer);
+            send({
+                event : "answer",
+                data : answer
+            });
+        }, function(error) {
+            alert("Error creating an answer");
+        });
+    };
+    ```
+
+    - #### step5. PeerA가 answer 받기
+    ```js
+    /**
+    * 처음 PeerA는 anwser를 받고 setRemoteDescription 으로 설정
+    */
+    function handleAnswer(answer) {
+        peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        console.log("connection established successfully!!");
+    };
+    ```
+
+    - #### 연결 완료
+
+    7. ### message 보내기
+    ```js
+    /**
+    * 연결 되었으므로 dataChannel 의 send 메서드를 사용하여 피어간에 메시지를 보낼 수 있다.
+    */
+    function sendMessage() {
+        dataChannel.send(input.value);
+        input.value = "";
+    }
+    ```
+    ```js
+    /**
+     * 데이터 채널에서 메시지를 수신하기위해 peerConnection 객체 에 콜백을 추가
+     */
+    peerConnection.ondatachannel = function (event) {
+        dataChannel = event.channel;
+    };
+    ```
+
+    8. ### Video and Audio Channels 추가
+    - WebRTC가 P2P 연결을 설정하면 오디오 및 비디오 스트림을 직접 쉽게 전송할 수 있다.
+
+    - #### step1. Media Stream 얻기
+    ```js
+    /**
+    * 브라우저에서 미디어 스트림을 가져오기
+    * WebRTC는이를위한 API를 제공
+    */
+    const constraints = {
+        video: true,audio : true
+    };
+
+    navigator.mediaDevices.getUserMedia(constraints).
+    then(function(stream) { /* use the stream */ getLocalMediaStream })
+        .catch(function(err) { /* handle the error */ handleGetUserMediaError });
+    ```
+
+    ```js
+    /**
+     * constraints 객체를 사용하여 비디오의 프레임 속도, 너비 및 높이를 지정
+     */
+    var constraints = {
+        video : {
+            frameRate : {
+                ideal : 10,
+                max : 15
+            },
+            width : 1280,
+            height : 720,
+            facingMode : "user"
+        }
+    };
+    ```
+     - #### step2. Stream 보내기
+    ```js
+    /**
+     * WebRTC WebRTC peerconnection object에 스트림을 추가
+     * peerconnection에 스트림을 추가하면 연결된 피어 에서 addstream 이벤트가 트리거
+     */
+    peerConnection.addStream(stream);
+    ```
+
+     - #### step3. Stream 받기
+    ```js
+    /**
+     * remote peer 에서 listener를 통해 스트림을 수신
+     * 해당 스트림은  HTML 비디오 요소로 설정
+     */
+    peerConnection.onaddstream = function(event) {
+        videoElement.srcObject = event.stream;
+    };
+    ```
+
+     - NAT 문제를 위해 STUN 추가 설정
+    ```js
+    var configuration = {
+        "iceServers" : [ {
+            "url" : "stun:stun2.1.google.com:19302"
+        } ]
+    };
+    ```
+
+4. ## [[WebRTC + SpringBoot = Benkoff/WebRTC-SS](https://github.com/Benkoff/WebRTC-SS/)
+   
+
+    1. ### Project Setting
     ```java
     * jdk11
     * springboot 2.4.4
@@ -330,13 +675,8 @@ WebSocket
      - h2db
      - Thymeleaf
     ```
-    3. ### Websocket dependency
+
+    2. ### Websocket dependency
     ```gradle
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     ```
-
-    4. ### WebRTC Code 다운 [참조 : Benkoff/WebRTC-SS](https://github.com/Benkoff/WebRTC-SS/)
-
-    
-
-3. ## 
