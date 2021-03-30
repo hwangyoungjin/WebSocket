@@ -1,252 +1,263 @@
 # WebSocket
 WebSocket
 ---
-1. ## SpringBoot WebSocket
-- Spring Boot - 스프링 부트 WebSocket [참고](https://kouzie.github.io/spring/Spring-Boot-%EC%8A%A4%ED%94%84%EB%A7%81-%EB%B6%80%ED%8A%B8-WebSocket/#)
-- [SpringBoot WebSocket 참고](https://asfirstalways.tistory.com/359)
-- [SpringBoot WebSocket 참고](https://m.blog.naver.com/PostView.nhn?blogId=kdy2353&logNo=221469476261&proxyReferer=https:%2F%2Fwww.google.com%2F)
+1. # [Java Socket]()
+2. # [SpringBoot WebSocket - ChatRoom]()
+3. # [WebRTC + SpringBoot = baeldung]()
+3. # [WebRTC + SpringBoot = Benkoff/WebRTC-SS]()
+---
+1. ## Java Socket
+    1. ### Java Socket Project
+    2. ### Java Socket Chat Project
 
-    1. ## SpringBoot와 WebSocket을 이용한 간단한 채팅구현
+    
+2. ## SpringBoot와 WebSocket을 이용한 간단한 채팅구현
 
-        ```java
-        * front에서는
-        SockJs 와 Stomp 라이브러리 사용
+    - Spring Boot - 스프링 부트 WebSocket [참고](https://kouzie.github.io/spring/Spring-Boot-%EC%8A%A4%ED%94%84%EB%A7%81-%EB%B6%80%ED%8A%B8-WebSocket/#)
+    - [SpringBoot WebSocket 참고](https://asfirstalways.tistory.com/359)
+    - [SpringBoot WebSocket 참고](https://m.blog.naver.com/PostView.nhn?blogId=kdy2353&logNo=221469476261&proxyReferer=https:%2F%2Fwww.google.com%2F)
+
+
+    ```java
+    * front에서는
+    SockJs 와 Stomp 라이브러리 사용
+    
+    * 환경
+    * jdk11
+    * gradle
+    * springboot 2.4.4
+    * dependency
+    - lombok
+    - WebSocket
+    - Thymeleaf
+    - devtools
+    ```
+
+    1. ### 클라이언트에서 사용할 라이브러리 의존성 추가
+    ```gradle
+    compile("org.webjars:sockjs-client:1.0.2")
+    compile("org.webjars:stomp-websocket:2.3.3")
+    ```
+
+    2. ### WebSocketConfig 클래스 생성
+    ```java
+
+    * Client에서 socket Url : "/ws" 로 보낸다
+
+    @Configuration
+    @EnableWebSocket
+    public class WebSocketConfig implements WebSocketConfigurer {
+
         
-        * 환경
-        * jdk11
-        * gradle
-        * springboot 2.4.4
-        * dependency
-        - lombok
-        - WebSocket
-        - Thymeleaf
-        - devtools
-        ```
+        @Override
+        public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+            registry.addHandler(new ChatSocketHandler(), "/ws").withSockJS();
+        }
+    }
 
-        1. ### 클라이언트에서 사용할 라이브러리 의존성 추가
-        ```gradle
-        compile("org.webjars:sockjs-client:1.0.2")
-        compile("org.webjars:stomp-websocket:2.3.3")
-        ```
+    ```
+    
+    3. ### Message Model 생성
+    ```java
+    @Data
+    public class ChatMessage {
+        private String name;
+        private String message;
+    }
+    ```
 
-        2. ### WebSocketConfig 클래스 생성
-        ```java
+    4. ### SocketHandler 생성
+    ```java
+    public class ChatSocketHandler extends TextWebSocketHandler {
 
-        * Client에서 socket Url : "/ws" 로 보낸다
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<WebSocketSession> list = Collections.synchronizedList(new ArrayList<>());
 
-        @Configuration
-        @EnableWebSocket
-        public class WebSocketConfig implements WebSocketConfigurer {
+        /**
+        * 웹 소켓 연결될 때 호출
+        * html 렌터링되면서 js 호출되고 이를 통해 socket 연결되면서 호출
+        */
+        @Override
+        public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+            System.out.println("===========접속===========");
+            System.out.println("session ID = "+ session.getId());
+            System.out.println("session Accept Protocol = "+ session.getAcceptedProtocol());
+            System.out.println("session LocalAddress = "+ session.getLocalAddress());
+            System.out.println("session RemoteAddress = "+ session.getRemoteAddress());
+            System.out.println("session Uri = "+ session.getUri());
+            System.out.println("===========접속===========");
+            list.add(session);
+        }
 
-            
-            @Override
-            public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-                registry.addHandler(new ChatSocketHandler(), "/ws").withSockJS();
+        /**
+        * 메시지를 전송받았을 때 호출되는 메소드
+        */
+        @Override
+        protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+            System.out.println("====메세지 도착====");
+            //payload는 전송되는 데이터를 의미
+            System.out.println("session Id = "+session.getId()+", 받은 message payload = "+message.getPayload());
+            System.out.println("====메세지 끝====");
+
+            System.out.println("session ID = "+ session.getId());
+            System.out.println("session Accept Protocol = "+ session.getAcceptedProtocol());
+            System.out.println("session LocalAddress = "+ session.getLocalAddress());
+            System.out.println("session RemoteAddress = "+ session.getRemoteAddress());
+            System.out.println("session Uri = "+ session.getUri());
+
+
+
+
+            ChatMessage chatMessage = new ChatMessage();
+            chatMessage.setName(message.toString());
+            chatMessage.setMessage(message.getPayload());
+
+            String json = objectMapper.writeValueAsString(chatMessage);
+
+            // 세션에 존재하는 모든 client에게 message 전송 : echo
+            for(WebSocketSession wss : list){
+                /**
+                * 아래 출려코드 사용시 에러발생 Closing session due to exception for WebSocketServerSockJsSession
+                * => 주석처리하니 해결됨
+                * => session은 생성해서 한번만 사용가능한건가..
+                */
+    //            System.out.println("WebSocketSession List ["+wss.getId() + "]");
+                wss.sendMessage(new TextMessage(json));
             }
         }
 
-        ```
-        
-        3. ### Message Model 생성
-        ```java
-        @Data
-        public class ChatMessage {
-            private String name;
-            private String message;
+
+        /**
+        * 연결 종료시 호출되는 메소드
+        */
+        @Override
+        public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+            System.out.println("===========접속 Close===========");
+            System.out.println("session ID = "+ session.getId());
+            System.out.println("session Accept Protocol = "+ session.getAcceptedProtocol());
+            System.out.println("session LocalAddress = "+ session.getLocalAddress());
+            System.out.println("session RemoteAddress = "+ session.getRemoteAddress());
+            System.out.println("session Uri = "+ session.getUri());
+            System.out.println("===========접속 Close===========");
+
+            list.remove(session);
         }
-        ```
+    }
+    ```
 
-        4. ### SocketHandler 생성
-        ```java
-        public class ChatSocketHandler extends TextWebSocketHandler {
+    5. ### Controller 생성
+    ```java
+    @Controller
+    public class ChatController {
+        @GetMapping("/chatrooms")
+        public String chatrooms(){
+            return "chatrooms";
+        }
+    }
+    ``` 
 
-            ObjectMapper objectMapper = new ObjectMapper();
-            List<WebSocketSession> list = Collections.synchronizedList(new ArrayList<>());
+    6. ### chatroom.js 생성
+    ```js
+    // sockjs 를 이용한 서버와 연결되는 객체
+    var ws = null;
 
-            /**
-            * 웹 소켓 연결될 때 호출
-            */
-            @Override
-            public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-                System.out.println("===========접속===========");
-                System.out.println("session ID = "+ session.getId());
-                System.out.println("session Accept Protocol = "+ session.getAcceptedProtocol());
-                System.out.println("session LocalAddress = "+ session.getLocalAddress());
-                System.out.println("session RemoteAddress = "+ session.getRemoteAddress());
-                System.out.println("session Uri = "+ session.getUri());
-                System.out.println("===========접속===========");
-                list.add(session);
+    function setConnected(connected) {
+    }
+
+    function showMessage(message) {
+        console.log(message);
+        var jsonMessage = JSON.parse(message);
+
+        $("#chatArea").append(jsonMessage.name + ' : ' + jsonMessage.message + '\n');
+
+        var textArea = $('#chatArea');
+        textArea.scrollTop( textArea[0].scrollHeight - textArea.height()   );
+
+    }
+
+
+    function connect() {
+        // SockJS라이브러리를 이용하여 서버에 연결
+        ws = new SockJS('/ws');
+        // 서버가 메시지를 보내주면 함수가 호출된다.
+        ws.onmessage = function(message) {
+            showMessage(message.data);
+        }
+    }
+
+    function disconnect() {
+        if (ws != null) {
+            ws.close();
+        }
+        setConnected(false);
+        console.log("Disconnected");
+    }
+
+    function send() {
+        // 웹소켓 서버에 메시지를 전송
+        ws.send(JSON.stringify({'message': $("#chatInput").val()}));
+        // 채팅입력창을 지우고 포커싱하라.
+        $("#chatInput").val('');
+        $("#chatInput").focus();
+    }
+
+
+    // $(함수(){ 함수내용 });  // jquery에서 문서가 다 읽어들이면 함수()를 호출한다.
+    $(function () {
+
+        connect();
+
+        // 채팅입력창에서 키가 눌리면 함수가 호출
+        // 엔터를 입력하면 send()함수가 호출
+        $("#chatInput").keypress(function(e) {
+            if (e.keyCode == 13){
+                send();
             }
-
-            /**
-            * 메시지를 전송받았을 때 호출되는 메소드
-            */
-            @Override
-            protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-                System.out.println("====메세지 도착====");
-                //payload는 전송되는 데이터를 의미
-                System.out.println("session Id = "+session.getId()+", 받은 message payload = "+message.getPayload());
-                System.out.println("====메세지 끝====");
-
-                System.out.println("session ID = "+ session.getId());
-                System.out.println("session Accept Protocol = "+ session.getAcceptedProtocol());
-                System.out.println("session LocalAddress = "+ session.getLocalAddress());
-                System.out.println("session RemoteAddress = "+ session.getRemoteAddress());
-                System.out.println("session Uri = "+ session.getUri());
-
-
-
-
-                ChatMessage chatMessage = new ChatMessage();
-                chatMessage.setName(message.toString());
-                chatMessage.setMessage(message.getPayload());
-
-                String json = objectMapper.writeValueAsString(chatMessage);
-
-                // 세션에 존재하는 모든 client에게 message 전송 : echo
-                for(WebSocketSession wss : list){
-                    /**
-                    * 아래 출려코드 사용시 에러발생 Closing session due to exception for WebSocketServerSockJsSession
-                    * => 주석처리하니 해결됨
-                    * => session은 생성해서 한번만 사용가능한건가..
-                    */
-        //            System.out.println("WebSocketSession List ["+wss.getId() + "]");
-                    wss.sendMessage(new TextMessage(json));
-                }
-            }
-
-
-            /**
-            * 연결 종료시 호출되는 메소드
-            */
-            @Override
-            public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-                System.out.println("===========접속 Close===========");
-                System.out.println("session ID = "+ session.getId());
-                System.out.println("session Accept Protocol = "+ session.getAcceptedProtocol());
-                System.out.println("session LocalAddress = "+ session.getLocalAddress());
-                System.out.println("session RemoteAddress = "+ session.getRemoteAddress());
-                System.out.println("session Uri = "+ session.getUri());
-                System.out.println("===========접속 Close===========");
-
-                list.remove(session);
-            }
-        }
-        ```
-
-        5. ### Controller 생성
-        ```java
-        @Controller
-        public class ChatController {
-            @GetMapping("/chatrooms")
-            public String chatrooms(){
-                return "chatrooms";
-            }
-        }
-        ``` 
-
-        6. ### chatroom.js 생성
-        ```js
-        // sockjs 를 이용한 서버와 연결되는 객체
-        var ws = null;
-
-        function setConnected(connected) {
-        }
-
-        function showMessage(message) {
-            console.log(message);
-            var jsonMessage = JSON.parse(message);
-
-            $("#chatArea").append(jsonMessage.name + ' : ' + jsonMessage.message + '\n');
-
-            var textArea = $('#chatArea');
-            textArea.scrollTop( textArea[0].scrollHeight - textArea.height()   );
-
-        }
-
-
-        function connect() {
-            // SockJS라이브러리를 이용하여 서버에 연결
-            ws = new SockJS('/ws');
-            // 서버가 메시지를 보내주면 함수가 호출된다.
-            ws.onmessage = function(message) {
-                showMessage(message.data);
-            }
-        }
-
-        function disconnect() {
-            if (ws != null) {
-                ws.close();
-            }
-            setConnected(false);
-            console.log("Disconnected");
-        }
-
-        function send() {
-            // 웹소켓 서버에 메시지를 전송
-            ws.send(JSON.stringify({'message': $("#chatInput").val()}));
-            // 채팅입력창을 지우고 포커싱하라.
-            $("#chatInput").val('');
-            $("#chatInput").focus();
-        }
-
-
-        // $(함수(){ 함수내용 });  // jquery에서 문서가 다 읽어들이면 함수()를 호출한다.
-        $(function () {
-
-            connect();
-
-            // 채팅입력창에서 키가 눌리면 함수가 호출
-            // 엔터를 입력하면 send()함수가 호출
-            $("#chatInput").keypress(function(e) {
-                if (e.keyCode == 13){
-                    send();
-                }
-            });
-
-            $( "#sendBtn" ).click(function() { send(); });
         });
-        ```
 
-        7. ### chatroom.html 생성
+        $( "#sendBtn" ).click(function() { send(); });
+    });
+    ```
 
-        ```html
-        <!DOCTYPE html>
-        <html lang="ko" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
-        <head>
-            <meta charset="utf-8"/>
-            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
-            <script  type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    7. ### chatroom.html 생성
 
-            <!-- 의존성 추가 했던 라이브러리 사용 -->
-            <script  type="text/javascript" src="/webjars/sockjs-client/1.0.2/sockjs.min.js"></script>
+    ```html
+    <!DOCTYPE html>
+    <html lang="ko" xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+        <script  type="text/javascript" src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
 
-            <script src="/js/chatroom.js"></script>
-            <title>chat room</title>
-        </head>
+        <!-- 의존성 추가 했던 라이브러리 사용 -->
+        <script  type="text/javascript" src="/webjars/sockjs-client/1.0.2/sockjs.min.js"></script>
 
-        <body>
+        <script src="/js/chatroom.js"></script>
+        <title>chat room</title>
+    </head>
 
-        <div class="jumbotron">
-            <h1>chat room</h1>
+    <body>
+
+    <div class="jumbotron">
+        <h1>chat room</h1>
+    </div>
+
+    <div class="container">
+
+        <div class="col-sm-12 col-md-12">
+            <textarea cols="80" rows="15" id="chatArea" class="form-control"></textarea>
+        </div>
+        <div class="col-sm-12 col-md-12">
+            <input type="text" id="chatInput" class="form-control"/>
+            <input type="button" id="sendBtn" value="전송" class="btn btn-primary btn-small"/>
         </div>
 
-        <div class="container">
+    </div>
+    </body>
+    </html>
+    ```
 
-            <div class="col-sm-12 col-md-12">
-                <textarea cols="80" rows="15" id="chatArea" class="form-control"></textarea>
-            </div>
-            <div class="col-sm-12 col-md-12">
-                <input type="text" id="chatInput" class="form-control"/>
-                <input type="button" id="sendBtn" value="전송" class="btn btn-primary btn-small"/>
-            </div>
-
-        </div>
-        </body>
-        </html>
-        ```
-
-2. ## WebRTC
+- ## WebRTC
     ```java
     Web RTC 기술은 P2P 통신에 최적화 되어있다.
     Web RTC에 사용되는 기술은 여러가지가 있지만 크게 3가지의 클래스에 의해서 실시간 데이터 교환이 일어난다.
@@ -318,7 +329,7 @@ WebSocket
     ```java
     * WebRTC 순서 정리
 
-    * WebRTC가 P2P연결할 수없을때 사용 하는 Turn 서버는 사용하지 않는다고 가정
+    * WebRTC가 P2P연결할 수 없을때 사용 하는 Turn 서버는 사용하지 않는다고 가정
 
     ClientA
     1. stun을 통해 자신의 Public IP를 알아내고
@@ -347,16 +358,25 @@ WebSocket
     ```
 
 
-    - ## [WebRTC 정리 잘되어있음](https://jinn-blog.tistory.com/112)
+    - ### [WebRTC 정리 잘되어있음](https://jinn-blog.tistory.com/112)
 
-    - ## [front : react + back : springboot으로 RTC](https://www.baeldung.com/webrtc)
-        - ## 해당 Project의 [Github](https://github.com/sintinilorenzo/video-calling-app)
+    - ### [front : react + back : springboot으로 RTC](https://www.baeldung.com/webrtc)
+        - ### 해당 Project의 [Github](https://github.com/sintinilorenzo/video-calling-app)
         - turn은 연결이 안되므로 같은 공유기 안에서만 가능
 
     
 3. ## [WebRTC + SpringBoot = baeldung](https://www.baeldung.com/webrtc)
-     ```
+     ```js
+    * WebRTC란?
+    WebRTC(Web Real-Time Communications)란, 웹 어플리케이션(최근에는 Android 및 IOS도 지원) 및 사이트들이 
+    별도의 소프트웨어 없이 음성, 영상 미디어 혹은 텍스트, 파일 같은 데이터를 브라우져끼리 주고 받을 수 있게 만든 *기술
+    
     * WebRTC는 브라우저와 함께 기본 제공되는 솔루션이므로 브라우저에 외부 플러그인을 설치할 필요X
+
+    * WebRTC 핵심 클래스
+    MediaStream — 카메라와 마이크 등의 데이터 스트림 접근
+    RTCPeerConnection — 암호화 및 대역폭 관리 및 오디오, 비디오의 연결
+    RTCDataChannel — 일반적인 데이터의 P2P 통신
 
     * WebRTC가 내부적으로 처리하는 문제 문제
      1. Packet-loss concealment
@@ -412,6 +432,7 @@ WebSocket
         /**
         * 클라이언트로부터 메시지를 받으면 목록의 모든 클라이언트 세션을 반복하고
         * 보낸 사람의 세션 ID를 비교하여 보낸 사람을 제외한 다른 모든 클라이언트에게 메시지를 보낸다.
+        * Client가 Offer하는 경우 실행 됨
         */
         @Override
         public void handleTextMessage(WebSocketSession session, TextMessage message)
@@ -425,6 +446,8 @@ WebSocket
 
         /**
         * 모든 클라이언트를 추적 할 수 있도록 수신 된 세션을 세션 목록에 추가
+        * 클라이언트가 index.html 접속 하면 socket 보내는데 그 때 해당 메소드 실행됨
+        * 즉, 클라이언트가 localhost:8080 접속 -> index.html -> client.js의 socket 요청 -> 해당메소드 실행
         */
         @Override
         public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -441,8 +464,15 @@ WebSocket
     * 이를 달성하기 위해 PeerA는 다른 피어(PeerB)가 원격 설명 자로 설정해야하는 Offer를 작성합니다. 또한 다른 피어(PeerB)는 PeerA가 원격 설명 자로 수락하는 answer을 생성합니다.
     * 위 과정을 통해 PeerA와 PeerB는 연결이 완료
     ```
-
     5. ### Client 설정
+    
+    ```js
+    * WebRTC 핵심 클래스
+    MediaStream — 카메라와 마이크 등의 데이터 스트림 접근
+    RTCPeerConnection — 암호화 및 대역폭 관리 및 오디오, 비디오의 연결
+    RTCDataChannel — 일반적인 데이터의 P2P 통신
+    ```
+
     ```js
     //connecting to our signaling server
     //우리가 구축 한 Spring Boot 시그널링 서버가 http : // localhost : 8080 에서 실행되고 있음
@@ -466,7 +496,7 @@ WebSocket
     peerConnection = new RTCPeerConnection(configuration);
 
     /**
-     * 메시지 전달에 사용할 dataChannel
+     * Peer간 메시지 전달에 사용할 dataChannel
      */
     // creating data channel
     dataChannel = peerConnection.createDataChannel("dataChannel", {
@@ -491,7 +521,7 @@ WebSocket
     * 여기서 피어의 세션 설명이 두 Peer에서 교환되고 수락 된다.
     ```
     
-    - #### 처음 PeerA offer 생성
+    - #### step1. PeerA offer 생성
     ```js
     /**
     * 1. offer를 생성하고 이를 peerConnection 의 localDescription으로 설정
@@ -598,8 +628,11 @@ WebSocket
         dataChannel = event.channel;
     };
     ```
+    
+    - ## 여기까지 Brower Console Test 완료
 
-    8. ### Video and Audio Channels 추가
+
+    8. ### Video and Audio Channels 추가해보기
     - WebRTC가 P2P 연결을 설정하면 오디오 및 비디오 스트림을 직접 쉽게 전송할 수 있다.
 
     - #### step1. Media Stream 얻기
@@ -613,8 +646,8 @@ WebSocket
     };
 
     navigator.mediaDevices.getUserMedia(constraints).
-    then(function(stream) { /* use the stream */ getLocalMediaStream })
-        .catch(function(err) { /* handle the error */ handleGetUserMediaError });
+    then(function(stream) { /* use the stream */  })
+        .catch(function(err) { /* handle the error */  });
     ```
 
     ```js
