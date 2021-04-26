@@ -79,7 +79,7 @@ public class SignalHandler extends TextWebSocketHandler {
             WebSocketMessage message = objectMapper.readValue(textMessage.getPayload(), WebSocketMessage.class);
             logger.debug("[ws] Message of {} type from {} received", message.getType(), message.getFrom());
             String userName = message.getFrom(); // origin of the message
-            String data = message.getData(); // payload
+            String data = message.getData(); // payload // room id가 들어온다
 
             Room room;
             switch (message.getType()) {
