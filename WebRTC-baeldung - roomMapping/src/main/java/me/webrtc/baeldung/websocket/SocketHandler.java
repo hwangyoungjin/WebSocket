@@ -1,6 +1,10 @@
 package me.webrtc.baeldung.websocket;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
@@ -15,6 +19,20 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class SocketHandler extends TextWebSocketHandler {
 
     List<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+    // private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
+    // message types, used in signalling:
+    // text message
+    // SDP Offer message
+    private static final String MSG_TYPE_OFFER = "offer";
+    // SDP Answer message
+    private static final String MSG_TYPE_ANSWER = "answer";
+    // New ICE Candidate message
+    private static final String MSG_TYPE_ICE = "ice";
+    // join room data message
+    private static final String MSG_TYPE_JOIN = "join";
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
 
     //TODO : watingRoom 만들기 -> sessionId
@@ -27,12 +45,21 @@ public class SocketHandler extends TextWebSocketHandler {
      *  Client가 Offer하는 경우 실행 됨
      */
     @Override
-    public void handleTextMessage(WebSocketSession session, TextMessage message)
+    public void handleTextMessage(WebSocketSession session, TextMessage textMessage)
             throws InterruptedException, IOException {
+
+  //      WebSocketMessage message = objectMapper.readValue(textMessage.getPayload(), WebSocketMessage.class);
+        //String userName = message.getFrom(); // origin of the message
+        //String data = message.getData(); // payload // room id가 들어온다
+
+
+
+
         for (WebSocketSession webSocketSession : sessions) {
             //TODO : MESSAGE
             if (webSocketSession.isOpen() && !session.getId().equals(webSocketSession.getId())) {
-                webSocketSession.sendMessage(message);
+                webSocketSession.sendMessage(textMessage);
+         //       logger.debug("[ws] Type of the received message {} is undefined!", message.getPayload());
             }
         }
     }
@@ -48,6 +75,14 @@ public class SocketHandler extends TextWebSocketHandler {
     }
 
 
-    //
+
+    /**
+     * 브라우저가 연결을 닫으면 이 메서드가 호출되고 세션이 세션 목록에서 제거
+     */
+    @Override
+    public void afterConnectionClosed(final WebSocketSession session, final CloseStatus status) {
+    //    logger.debug("[ws] The received message {} is undefined!", "remove");
+        sessions.remove(session.getId());
+    }
 }
 
